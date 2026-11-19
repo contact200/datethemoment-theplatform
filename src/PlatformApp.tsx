@@ -1,9 +1,10 @@
+import ScheduleManager from './ScheduleManager'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { ArrowRight, CalendarDays, Camera, CheckCircle2, ChevronDown, Download, FileText, FolderPlus, ImagePlus, LayoutDashboard, LogOut, Palette, Plus, RefreshCw, ShieldCheck, Sparkles, UploadCloud, WandSparkles } from 'lucide-react'
 import { supabase } from './lib/supabase'
-import { pdfToText, parseScheduleText } from './lib/pdf'
+import TeamManagement from './TeamManagement'
 import type { ImportedEvent } from './lib/pdf'
 import { downloadGraphic } from './lib/graphics'
 import './PlatformApp.css'
@@ -13,7 +14,7 @@ type ClubEvent = { id: string; organization_id: string; kind: 'match' | 'trainin
 type Caption = { id: string; organization_id: string; event_id: string; content: string; status: 'draft' | 'approved' }
 type Photo = { id: string; filename: string; storage_path: string; signedUrl?: string }
 type Provision = { status: string; make_folder_id?: number | null; scenario_ids?: Record<string, number> }
-type View = 'overview' | 'calendar' | 'studio' | 'graphics' | 'photos' | 'branding'
+type View = 'overview' | 'calendar' | 'studio' | 'graphics' | 'photos' | 'branding' | 'teams'
 
 const client = supabase!
 const defaultEvent: ImportedEvent = { kind: 'match', team: '', opponent: '', venue: '', event_date: '', start_time: '' }
@@ -36,6 +37,7 @@ export default function PlatformApp() {
   const [newSport, setNewSport] = useState('Soccer')
   const [provisionCode, setProvisionCode] = useState('')
   const [events, setEvents] = useState<ClubEvent[]>([])
+  const [dtmMonthOffset, setDtmMonthOffset] = useState(0)
   const [captions, setCaptions] = useState<Caption[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])
   const [provision, setProvision] = useState<Provision | null>(null)
@@ -153,20 +155,57 @@ export default function PlatformApp() {
 
   async function importPdf(file?: File) {
     if (!file || !org) return
-    setBusy(true); setPendingEvents([]); setExtractedText(''); setError(''); setNotice('')
+
+    setBusy(true)
+    setPendingEvents([])
+    setExtractedText('')
+    setError('')
+    setNotice('')
+
     try {
-      const text = await pdfToText(file)
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        throw new Error('Please select a PDF file.')
+      }
+
+      if (file.size > 15 * 1024 * 1024) {
+        throw new Error('PDF must be 15 MB or smaller.')
+      }
+
       const path = `${org.id}/schedules/${crypto.randomUUID()}.pdf`
-      const { error: storageError } = await client.storage.from('dtm-schedules').upload(path, file, { contentType: 'application/pdf', upsert: false })
+
+      const { error: storageError } = await client.storage
+        .from('dtm-schedules')
+        .upload(path, file, {
+          contentType: 'application/pdf',
+          upsert: false
+        })
+
       if (storageError) throw storageError
-      const { data: record, error: dbError } = await client.from('schedules').insert({ organization_id: org.id, filename: file.name, storage_path: path, extracted_text: text.slice(0, 250000) }).select('id').single()
-      if (dbError) throw dbError
-      const results = parseScheduleText(text)
-      setPendingEvents(results.map(ev => ({ ...ev, team: org.name })))
-      setExtractedText(text.slice(0, 10000))
+
+      const { data: record, error: dbError } = await client
+        .from('schedules')
+        .insert({
+          organization_id: org.id,
+          filename: file.name,
+          storage_path: path,
+          extracted_text: ''
+        })
+        .select('id')
+        .single()
+
+      if (dbError) {
+        await client.storage.from('dtm-schedules').remove([path])
+        throw dbError
+      }
+
       sessionStorage.setItem(`dtm-schedule-id:${org.id}`, record.id)
-      notify(results.length ? `Found ${results.length} possible events. Review before adding them.` : 'PDF uploaded. No dependable dates detected: add events manually or adapt parser for your schedule format.')
-    } catch (e) { fail(String(e instanceof Error ? e.message : e)) } finally { setBusy(false) }
+
+      notify('PDF uploaded successfully. Ready for Make.com processing.')
+    } catch (e) {
+      fail(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function confirmImport() {
@@ -181,13 +220,6 @@ export default function PlatformApp() {
       await refreshWorkspace(org)
       notify(`${batch.length} events added for review. Verify their dates and opponents.`)
     } catch (e) { fail(String(e instanceof Error ? e.message : e)); await refreshWorkspace(org) } finally { setBusy(false) }
-  }
-
-  async function confirmEvent(event: ClubEvent) {
-    if (!org) return
-    const { error: updateError } = await client.from('events').update({ status: 'confirmed' }).eq('id', event.id).eq('organization_id', org.id)
-    if (updateError) fail(updateError.message)
-    else { await refreshWorkspace(org); notify('Event confirmed.') }
   }
 
   async function generateCaption(event: ClubEvent) {
@@ -238,12 +270,39 @@ export default function PlatformApp() {
 
   if (!org) return <div className="pl-auth-page"><div className="pl-auth-story"><div className="pl-logo">D<span>.</span></div><span className="pl-kicker">YOUR FIRST WORKSPACE</span><h1>Let's build your<br/><em>club's home.</em></h1><p>One-time setup. Your organization's content, photos and calendars stay separated from other clubs.</p><button className="pl-plain" onClick={() => void client.auth.signOut()}><LogOut size={16}/> Sign out</button></div><div className="pl-auth-card"><FolderPlus size={36} color="#c9f072"/><h2>Create your organization</h2><form onSubmit={createOrganization}><label>Club name</label><input required minLength={2} maxLength={100} value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Legion FC"/><label>Sport</label><select value={newSport} onChange={e => setNewSport(e.target.value)}><option>Soccer</option><option>Basketball</option><option>Volleyball</option><option>Other</option></select><label>Provisioning invite code (optional, given on your discovery call)</label><input type="password" value={provisionCode} onChange={e => setProvisionCode(e.target.value)} placeholder="Private onboarding code"/><button disabled={busy} className="pl-primary">{busy ? 'Creating…' : 'Create my workspace'} <ArrowRight size={17}/></button></form><p className="pl-muted">A fresh database workspace will be created immediately. Make provisioning starts when the server integration is configured.</p>{error && <div className="pl-error">{error}</div>}</div></div>
 
+
+  const dtmNow = new Date()
+  const dtmToday = [
+    dtmNow.getFullYear(),
+    String(dtmNow.getMonth() + 1).padStart(2, '0'),
+    String(dtmNow.getDate()).padStart(2, '0')
+  ].join('-')
+  const dtmMonthDate = new Date(
+    dtmNow.getFullYear(),
+    dtmNow.getMonth() + dtmMonthOffset,
+    1
+  )
+  const dtmMonthKey = [
+    dtmMonthDate.getFullYear(),
+    String(dtmMonthDate.getMonth() + 1).padStart(2, '0')
+  ].join('-')
+  const dtmMonthEvents = events.filter(
+    e => e.event_date.startsWith(dtmMonthKey) && e.event_date >= dtmToday
+  )
+  const dtmPastEvents = events.filter(e => e.event_date < dtmToday)
+  const dtmCalendarStart = dtmMonthDate.getDay()
+  const dtmCalendarDays = new Date(
+    dtmMonthDate.getFullYear(),
+    dtmMonthDate.getMonth() + 1,
+    0
+  ).getDate()
+
   const planned = events.length
   const drafted = captions.length
   const confirmed = events.filter(ev => ev.status === 'confirmed').length
   const graphicEvent = events.find(e => e.id === graphicEventId) || events[0]
   const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard }, { id: 'calendar', label: 'Calendar & PDF', icon: CalendarDays },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard }, { id: 'calendar', label: 'Calendar', icon: CalendarDays }, { id: 'teams', label: 'Teams', icon: FolderPlus },
     { id: 'studio', label: 'Caption Studio', icon: WandSparkles }, { id: 'graphics', label: 'Graphics Studio', icon: Palette },
     { id: 'photos', label: 'Photography', icon: Camera }, { id: 'branding', label: 'Brand Kit', icon: Palette },
   ]
@@ -253,7 +312,179 @@ export default function PlatformApp() {
       {error && <div className="pl-error"><strong>Attention:</strong> {error} <button onClick={() => setError('')}>×</button></div>}
       {notice && <div className="pl-success">{notice} <button onClick={() => setNotice('')}>×</button></div>}
       {view === 'overview' && <><div className="pl-hero"><span className="pl-kicker">WELCOME TO YOUR WORKSPACE</span><h1>Make every moment<br/><em>go further.</em></h1><p>Your club's marketing, schedule and visual content—all together.</p><button className="pl-primary" onClick={() => setView('calendar')}>Start with your schedule <ArrowRight size={18}/></button></div><div className="pl-stat-grid"><div><span>Calendar events</span><strong>{planned}</strong></div><div><span>Confirmed events</span><strong>{confirmed}</strong></div><div><span>Caption drafts</span><strong>{drafted}</strong></div><div><span>Photos uploaded</span><strong>{photos.length}</strong></div></div><section className="pl-panel"><div className="pl-panel-heading"><h2>Getting started</h2><span className="pl-tag">YOUR ONBOARDING</span></div><div className="pl-steps"><div><CheckCircle2 color="#b7eb72"/> Account and organization created</div><div><CalendarDays/> {events.length ? 'Schedule available' : 'Upload a PDF schedule or add your first event'}</div><div><Sparkles/> {captions.length ? 'Content draft ready' : 'Create your first caption from an event'}</div><div><ImagePlus/> {photos.length ? 'Photo library ready' : 'Upload your club photography'}</div></div></section><section className="pl-panel"><div className="pl-panel-heading"><h2>Automation setup</h2><button className="pl-link" onClick={() => void refreshWorkspace(org)}><RefreshCw size={15}/> Refresh</button></div><p>Provisioning: <strong>{provision?.status || 'pending'}</strong></p><p className="pl-muted">{provision?.status === 'needs_setup' ? `Make folder ${provision.make_folder_id} created. Administrator must verify new scenario webhooks and connections.` : 'Automatic Make setup uses the private Netlify Function. It never runs on every login.'}</p>{provision?.status === 'pending' && <button className="pl-outline" onClick={() => { const code = window.prompt('Enter your private onboarding code') || ''; if (code) void provisionOrg(org.id, code) }}>Initialize automation</button>}</section></>}
-      {view === 'calendar' && <><div className="pl-title"><div><span className="pl-kicker">THE CALENDAR</span><h1>Every date.<br/><em>A new opportunity.</em></h1><p>Import schedules, review the dates, and turn events into content.</p></div><button className="pl-primary" onClick={() => setShowEvent(!showEvent)}><Plus size={17}/> Add event</button></div><section className="pl-panel"><div className="pl-panel-heading"><h2><FileText size={21}/> Upload a schedule PDF</h2><span className="pl-tag">TEXT PDFs</span></div><p className="pl-muted">Extracts text locally in your browser, then stores the original file privately under your club. Review every detected game; scanned PDF images require OCR later.</p><label className="pl-drop"><UploadCloud size={27}/>{busy ? 'Processing…' : 'Choose PDF schedule'}<input type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { void importPdf(e.target.files?.[0]); e.currentTarget.value = '' }}/></label>{pendingEvents.length > 0 && <div className="pl-review"><h3>Review extracted events</h3>{pendingEvents.map((e, i) => <div className="pl-review-row" key={i}><input aria-label="Team" value={e.team} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it, team:v.target.value} : it))}/><input type="date" aria-label="Date" value={e.event_date} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,event_date:v.target.value} : it))}/><input type="time" aria-label="Time" value={e.start_time} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,start_time:v.target.value} : it))}/><input aria-label="Opponent" placeholder="Opponent" value={e.opponent} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,opponent:v.target.value} : it))}/><button title="Remove proposal" onClick={() => setPendingEvents(prev => prev.filter((_, j) => j !== i))}>×</button></div>)}<button className="pl-primary" disabled={busy} onClick={() => void confirmImport()}>Add {pendingEvents.length} events for review <ArrowRight size={17}/></button></div>}{extractedText && <details className="pl-raw"><summary>View extracted PDF text</summary><pre>{extractedText}</pre></details>}</section>{showEvent && <section className="pl-panel"><h2>Add event manually</h2><form className="pl-event-form" onSubmit={saveManualEvent}><label>Type<select value={newEvent.kind} onChange={e => setNewEvent(v => ({...v,kind:e.target.value as ImportedEvent['kind']}))}><option value="match">Match</option><option value="training">Training</option></select></label><label>Team<input required value={newEvent.team} onChange={e => setNewEvent(v => ({...v,team:e.target.value}))}/></label><label>Opponent<input value={newEvent.opponent} onChange={e => setNewEvent(v => ({...v,opponent:e.target.value}))}/></label><label>Location<input value={newEvent.venue} onChange={e => setNewEvent(v => ({...v,venue:e.target.value}))}/></label><label>Date<input required type="date" value={newEvent.event_date} onChange={e => setNewEvent(v => ({...v,event_date:e.target.value}))}/></label><label>Time<input type="time" value={newEvent.start_time} onChange={e => setNewEvent(v => ({...v,start_time:e.target.value}))}/></label><button className="pl-primary" disabled={busy}>Save event</button></form></section>}<section className="pl-panel"><div className="pl-panel-heading"><h2>Upcoming club calendar</h2><span className="pl-tag">{events.length} EVENTS</span></div>{!events.length && <div className="pl-empty">No events yet. Upload a schedule or create your first event.</div>}{events.map(e => <div key={e.id} className="pl-event"><div className="pl-date"><strong>{e.event_date.slice(8)}</strong><span>{e.event_date.slice(5,7)}/{e.event_date.slice(2,4)}</span></div><div className="pl-eventbody"><strong>{e.team}{e.opponent ? ` vs ${e.opponent}` : ''}</strong><small>{e.kind.toUpperCase()} · {e.start_time?.slice(0,5) || 'Time TBD'} {e.venue && `· ${e.venue}`}</small></div><div className="pl-event-actions">{e.status === 'review' ? <button onClick={() => void confirmEvent(e)}>Confirm</button> : <span className="pl-ok">Confirmed</span>}<button onClick={() => void generateCaption(e)}>Draft caption</button></div></div>)}</section></>}
+      {view === 'teams' && <TeamManagement organizationId={org.id} />}
+      {view === 'calendar' && <><div className="pl-title"><div><span className="pl-kicker">THE CALENDAR</span><h1>Every date.<br/><em>A new opportunity.</em></h1><p>Import schedules, review the dates, and turn events into content.</p></div><button className="pl-primary" onClick={() => setShowEvent(!showEvent)}><Plus size={17}/> Add event</button></div><section className="pl-panel"><div className="pl-panel-heading"><h2><FileText size={21}/> Upload a schedule PDF</h2><span className="pl-tag">TEXT PDFs</span></div><p className="pl-muted">Extracts text locally in your browser, then stores the original file privately under your club. Review every detected game; scanned PDF images require OCR later.</p><label className="pl-drop"><UploadCloud size={27}/>{busy ? 'Processing…' : 'Choose PDF schedule'}<input type="file" accept="application/pdf,.pdf" disabled={busy} onChange={e => { void importPdf(e.target.files?.[0]); e.currentTarget.value = '' }}/></label>{pendingEvents.length > 0 && <div className="pl-review"><h3>Review extracted events</h3>{pendingEvents.map((e, i) => <div className="pl-review-row" key={i}><input aria-label="Team" value={e.team} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it, team:v.target.value} : it))}/><input type="date" aria-label="Date" value={e.event_date} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,event_date:v.target.value} : it))}/><input type="time" aria-label="Time" value={e.start_time} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,start_time:v.target.value} : it))}/><input aria-label="Opponent" placeholder="Opponent" value={e.opponent} onChange={v => setPendingEvents(prev => prev.map((it,j) => j === i ? {...it,opponent:v.target.value} : it))}/><button title="Remove proposal" onClick={() => setPendingEvents(prev => prev.filter((_, j) => j !== i))}>×</button></div>)}<button className="pl-primary" disabled={busy} onClick={() => void confirmImport()}>Add {pendingEvents.length} events for review <ArrowRight size={17}/></button></div>}{extractedText && <details className="pl-raw"><summary>View extracted PDF text</summary><pre>{extractedText}</pre></details>}</section>{showEvent && <section className="pl-panel"><h2>Add event manually</h2><form className="pl-event-form" onSubmit={saveManualEvent}><label>Type<select value={newEvent.kind} onChange={e => setNewEvent(v => ({...v,kind:e.target.value as ImportedEvent['kind']}))}><option value="match">Match</option><option value="training">Training</option></select></label><label>Team<input required value={newEvent.team} onChange={e => setNewEvent(v => ({...v,team:e.target.value}))}/></label><label>Opponent<input value={newEvent.opponent} onChange={e => setNewEvent(v => ({...v,opponent:e.target.value}))}/></label><label>Location<input value={newEvent.venue} onChange={e => setNewEvent(v => ({...v,venue:e.target.value}))}/></label><label>Date<input required type="date" value={newEvent.event_date} onChange={e => setNewEvent(v => ({...v,event_date:e.target.value}))}/></label><label>Time<input type="time" value={newEvent.start_time} onChange={e => setNewEvent(v => ({...v,start_time:e.target.value}))}/></label><button className="pl-primary" disabled={busy}>Save event</button></form></section>}
+<section className="pl-panel">
+  <div className="pl-panel-heading">
+    <h2><CalendarDays size={21}/> Content Calendar</h2>
+    <span className="pl-tag">NEXT 12 MONTHS</span>
+  </div>
+
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 20
+  }}>
+    <button
+      className="pl-outline"
+      disabled={dtmMonthOffset === 0}
+      onClick={() => setDtmMonthOffset(v => Math.max(0, v - 1))}
+    >
+      Previous
+    </button>
+    <h2 style={{textAlign: 'center', margin: 0}}>
+      {dtmMonthDate.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+      })}
+    </h2>
+    <button
+      className="pl-outline"
+      disabled={dtmMonthOffset === 11}
+      onClick={() => setDtmMonthOffset(v => Math.min(11, v + 1))}
+    >
+      Next
+    </button>
+  </div>
+
+  <div style={{overflowX: 'auto'}}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+      gap: 6,
+      minWidth: 620
+    }}>
+      {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => (
+        <div key={d} style={{
+          textAlign: 'center',
+          padding: 8,
+          fontSize: 11,
+          fontWeight: 700
+        }}>{d}</div>
+      ))}
+
+      {Array.from({length: dtmCalendarStart}, (_, i) => (
+        <div key={`blank-${i}`}/>
+      ))}
+
+      {Array.from({length: dtmCalendarDays}, (_, i) => i + 1)
+        .map(day => {
+          const dayISO =
+            `${dtmMonthKey}-${String(day).padStart(2, '0')}`
+          const dayEvents = dtmMonthEvents.filter(
+            e => e.event_date === dayISO
+          )
+
+          return (
+            <div key={day} style={{
+              minHeight: 92,
+              border: '1px solid #8885',
+              borderRadius: 8,
+              padding: 7,
+              opacity: dayEvents.length ? 1 : 0.45
+            }}>
+              <small style={{fontWeight: 700}}>{day}</small>
+
+              {dayEvents.map(e => {
+                const caption = captions.find(
+                  c => c.event_id === e.id
+                )
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => setView('studio')}
+                    title={`${e.team} vs ${e.opponent}`}
+                    style={{
+                      width: '100%',
+                      marginTop: 5,
+                      padding: 6,
+                      borderRadius: 6,
+                      border: '1px solid #8885',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      color: 'inherit'
+                    }}
+                  >
+                    <strong style={{
+                      display: 'block',
+                      fontSize: 11,
+                      overflowWrap: 'anywhere'
+                    }}>{e.team}</strong>
+                    <small>
+                      {e.status === 'review'
+                        ? 'Needs review'
+                        : caption
+                          ? 'Caption ready'
+                          : 'Caption pending'}
+                    </small>
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })}
+    </div>
+  </div>
+
+  <p className="pl-muted" style={{marginTop: 14}}>
+    {dtmMonthEvents.length} scheduled games this month.
+    Select a game to open Content Studio.
+  </p>
+</section>
+
+<details className="pl-panel">
+  <summary style={{
+    cursor: 'pointer',
+    fontWeight: 700,
+    padding: '8px 0'
+  }}>
+    Past Games ({dtmPastEvents.length}) — Expand
+  </summary>
+
+  <div style={{paddingTop: 16}}>
+    {dtmPastEvents.length === 0 &&
+      <p className="pl-muted">No past games.</p>}
+
+    {[...dtmPastEvents].reverse().map(e => {
+      const caption = captions.find(c => c.event_id === e.id)
+
+      return (
+        <div key={e.id} className="pl-event">
+          <div className="pl-date">
+            <strong>{e.event_date.slice(8)}</strong>
+            <span>
+              {new Date(
+                `${e.event_date}T12:00:00`
+              ).toLocaleDateString('en-US', {
+                month: 'short'
+              }).toUpperCase()}
+            </span>
+          </div>
+          <div className="pl-eventbody">
+            <strong>{e.team}</strong>
+            <small>
+              {e.status === 'review'
+                ? 'Needs review'
+                : caption
+                  ? 'Caption ready'
+                  : 'Caption pending'}
+            </small>
+          </div>
+          <button
+            className="pl-outline"
+            onClick={() => setView('studio')}
+          >
+            View captions
+          </button>
+        </div>
+      )
+    })}
+  </div>
+</details>
+<ScheduleManager client={client} organizationId={org.id} onDeleted={() => refreshWorkspace(org)} /></>}
       {view === 'studio' && <><div className="pl-title"><div><span className="pl-kicker">CONTENT STUDIO</span><h1>Moments into<br/><em>messages.</em></h1><p>Generate a first draft for each event, then edit in your club's voice.</p></div></div><section className="pl-panel">{!events.length && <div className="pl-empty">Add a calendar event before creating your first caption.</div>}{events.map(e => { const c = captions.find(x => x.event_id === e.id); return <div className="pl-caption-card" key={e.id}><div className="pl-panel-heading"><h3>{e.team} · {dateLabel(e.event_date)}</h3><button className="pl-outline" onClick={() => void generateCaption(e)}><Sparkles size={15}/> {c ? 'Refresh draft' : 'Generate draft'}</button></div>{c ? <><textarea defaultValue={c.content} key={`${c.id}-${c.content}`} rows={8} id={`cap-${c.id}`}/><button className="pl-primary" onClick={() => { const el = document.getElementById(`cap-${c.id}`) as HTMLTextAreaElement | null; if (el) void saveCaption(c, el.value) }}>Save draft</button></> : <p className="pl-muted">No draft yet.</p>}</div> })}</section></>}
       {view === 'graphics' && <><div className="pl-title"><div><span className="pl-kicker">BRANDED VISUALS</span><h1>Designed for<br/><em>your club.</em></h1><p>Export 1080 × 1350 matchday or training graphics in PNG or JPEG.</p></div></div><section className="pl-panel"><h2>Generate your graphic</h2>{!events.length ? <p>Add an event in Calendar first.</p> : <><label>Choose calendar event</label><select value={graphicEvent?.id || ''} onChange={e => setGraphicEventId(e.target.value)}>{events.map(e => <option key={e.id} value={e.id}>{e.team} · {dateLabel(e.event_date)} · {e.kind}</option>)}</select><div className="pl-graphic-preview" style={{ borderColor: org.color }}><span style={{ color: org.color }}>{org.name.toUpperCase()}</span><h2>{graphicEvent?.kind === 'training' ? 'TRAINING DAY' : 'MATCHDAY'}</h2><strong>{graphicEvent?.team}</strong>{graphicEvent?.kind === 'match' && <strong>VS {graphicEvent?.opponent || 'TBD'}</strong>}<p>{graphicEvent && dateLabel(graphicEvent.event_date)} · {graphicEvent?.start_time?.slice(0,5) || 'Time TBD'}</p></div><div className="pl-actions"><button className="pl-primary" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind}) }}><Download size={17}/> Download PNG</button><button className="pl-outline" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind},'image/jpeg') }}>Download JPEG</button></div></>}</section></>}
       {view === 'photos' && <><div className="pl-title"><div><span className="pl-kicker">PHOTO LIBRARY</span><h1>Your moments.<br/><em>Your archive.</em></h1><p>Upload photography into private organization storage.</p></div></div><section className="pl-panel"><label className="pl-drop"><ImagePlus size={27}/>{busy ? 'Uploading…' : 'Add JPG, PNG or WEBP'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { void uploadPhoto(e.target.files?.[0]); e.currentTarget.value = '' }}/></label><div className="pl-photo-grid">{photos.map(photo => <div key={photo.id}><img src={photo.signedUrl} alt={photo.filename}/><small>{photo.filename}</small></div>)}</div>{!photos.length && <p className="pl-muted">No photos uploaded yet.</p>}</section></>}
