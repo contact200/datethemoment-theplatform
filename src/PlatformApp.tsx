@@ -282,15 +282,6 @@ export default function PlatformApp() {
   }, [org, pdfFlow?.scheduleId, pdfFlow?.phase, pdfFlow?.startedAt, refreshWorkspace])
 
 
-  // Educational walkthrough while processing continues.
-  useEffect(() => {
-    if (!pdfFlow || !['processing', 'delayed'].includes(pdfFlow.phase)) return
-    const timer = window.setInterval(() => {
-      setPdfTip(current => (current + 1) % pdfLessons.length)
-    }, 6000)
-    return () => window.clearInterval(timer)
-  }, [pdfFlow?.scheduleId, pdfFlow?.phase])
-
   async function importPdf(file?: File) {
     if (!file || !org) return
 
