@@ -79,7 +79,7 @@ export default function PlatformApp() {
       return null
     }
   })
-  const [pdfCompact, setPdfCompact] = useState(false)
+  const [pdfCompact, setPdfCompact] = useState(true)
   const [pdfMinimized, setPdfMinimized] = useState(false)
   const [pdfTip, setPdfTip] = useState(0)
   const [notice, setNotice] = useState('')
@@ -269,17 +269,6 @@ export default function PlatformApp() {
   }, [org, pdfFlow?.scheduleId, pdfFlow?.phase, pdfFlow?.startedAt, refreshWorkspace])
 
 
-  // A short introduction, followed by non-blocking floating progress.
-  useEffect(() => {
-    if (!pdfFlow) return
-    if (['complete', 'delayed', 'failed'].includes(pdfFlow.phase)) {
-      setPdfCompact(true)
-      return
-    }
-    const timer = window.setTimeout(() => setPdfCompact(true), 1800)
-    return () => window.clearTimeout(timer)
-  }, [pdfFlow?.scheduleId, pdfFlow?.phase])
-
   // Educational walkthrough while processing continues.
   useEffect(() => {
     if (!pdfFlow || !['processing', 'delayed'].includes(pdfFlow.phase)) return
@@ -299,7 +288,7 @@ export default function PlatformApp() {
       phase: 'uploading',
       startedAt: Date.now()
     }
-    setPdfCompact(false)
+    setPdfCompact(true)
     setPdfMinimized(false)
     setPdfTip(0)
     setPdfFlow(initialPdfFlow)
