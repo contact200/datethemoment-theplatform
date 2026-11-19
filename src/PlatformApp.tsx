@@ -34,22 +34,35 @@ function captionDraft(e: ClubEvent, org: Organization) {
   return `MATCHDAY ⚽\n\n${e.team}${e.opponent ? ` vs ${e.opponent}` : ''}\n📅 ${dateLabel(e.event_date)}${e.start_time ? ` at ${e.start_time.slice(0, 5)}` : ''}${e.venue ? `\n📍 ${e.venue}` : ''}\n\nSupporting the journey, one match at a time.\n\n${org.name} | ${org.tagline}`
 }
 
-const pdfLessons = [
+const pdfLessons: {
+  title: string
+  detail: string
+  page: View
+  action: string
+}[] = [
   {
-    title: 'Your PDF becomes a calendar',
-    detail: 'DateTheMoment extracts scheduled games, dates, opponents and teams from the uploaded document.'
+    title: 'Your schedule becomes a calendar',
+    detail: 'Imported games appear on their scheduled dates. Review them directly in the calendar.',
+    page: 'calendar',
+    action: 'Open Calendar'
   },
   {
-    title: 'Each game is organized',
-    detail: 'The system matches registered teams and organizes their games in your private club workspace.'
+    title: 'Register your club\'s teams',
+    detail: 'Team names and aliases help DateTheMoment recognize the right squads in uploaded schedules.',
+    page: 'teams',
+    action: 'Open Teams'
   },
   {
-    title: 'Captions are generated',
-    detail: 'Eligible confirmed games receive individual AI-written caption drafts that can be reviewed and edited.'
+    title: 'Review your AI captions',
+    detail: 'Open Caption Studio to review and edit generated drafts before using them.',
+    page: 'studio',
+    action: 'Open Caption Studio'
   },
   {
-    title: 'Your club stays in control',
-    detail: 'Review your calendar, edit captions, and manage your content from the dashboard.'
+    title: 'Make it your club',
+    detail: 'Customize your club information and appearance in the Brand Kit.',
+    page: 'branding',
+    action: 'Open Brand Kit'
   }
 ]
 
@@ -509,6 +522,10 @@ export default function PlatformApp() {
               </div>
               <strong>{pdfLessons[pdfTip].title}</strong>
               <p>{pdfLessons[pdfTip].detail}</p>
+              <button type="button" className="pl-pdf-lesson-action"
+                onClick={() => setView(pdfLessons[pdfTip].page)}>
+                {pdfLessons[pdfTip].action} <ArrowRight size={14}/>
+              </button>
             </div>
           )}
 

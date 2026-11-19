@@ -573,3 +573,20 @@ html.dtm-light .pl-pdf-lesson p { color: #52695c }
 @media (prefers-reduced-motion: reduce) {
   .pl-pdf-cover--compact, .pl-pdf-lesson { animation: none !important }
 }
+
+.pl-pdf-lesson-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c9f072;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+html.dtm-light .pl-pdf-lesson-action {
+  color: #397346;
+}
