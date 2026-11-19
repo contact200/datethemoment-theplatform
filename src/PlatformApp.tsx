@@ -1,4 +1,5 @@
 import ThemeToggle from './ThemeToggle'
+import PhotoCarouselBuilder from './PhotoCarouselBuilder'
 import CaptionStudio from './CaptionStudio'
 import ScheduleManager from './ScheduleManager'
 import { useCallback, useEffect, useState } from 'react'
@@ -813,7 +814,14 @@ export default function PlatformApp() {
         />
       )}
       {view === 'graphics' && <><div className="pl-title"><div><span className="pl-kicker">BRANDED VISUALS</span><h1>Designed for<br/><em>your club.</em></h1><p>Export 1080 × 1350 matchday or training graphics in PNG or JPEG.</p></div></div><section className="pl-panel"><h2>Generate your graphic</h2>{!events.length ? <p>Add an event in Calendar first.</p> : <><label>Choose calendar event</label><select value={graphicEvent?.id || ''} onChange={e => setGraphicEventId(e.target.value)}>{events.map(e => <option key={e.id} value={e.id}>{e.team} · {dateLabel(e.event_date)} · {e.kind}</option>)}</select><div className="pl-graphic-preview" style={{ borderColor: org.color }}><span style={{ color: org.color }}>{org.name.toUpperCase()}</span><h2>{graphicEvent?.kind === 'training' ? 'TRAINING DAY' : 'MATCHDAY'}</h2><strong>{graphicEvent?.team}</strong>{graphicEvent?.kind === 'match' && <strong>VS {graphicEvent?.opponent || 'TBD'}</strong>}<p>{graphicEvent && dateLabel(graphicEvent.event_date)} · {graphicEvent?.start_time?.slice(0,5) || 'Time TBD'}</p></div><div className="pl-actions"><button className="pl-primary" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind}) }}><Download size={17}/> Download PNG</button><button className="pl-outline" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind},'image/jpeg') }}>Download JPEG</button></div></>}</section></>}
-      {view === 'photos' && <><div className="pl-title"><div><span className="pl-kicker">PHOTO LIBRARY</span><h1>Your moments.<br/><em>Your archive.</em></h1><p>Upload photography into private organization storage.</p></div></div><section className="pl-panel"><label className="pl-drop"><ImagePlus size={27}/>{busy ? 'Uploading…' : 'Add JPG, PNG or WEBP'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { void uploadPhoto(e.target.files?.[0]); e.currentTarget.value = '' }}/></label><div className="pl-photo-grid">{photos.map(photo => <div key={photo.id}><img src={photo.signedUrl} alt={photo.filename}/><small>{photo.filename}</small></div>)}</div>{!photos.length && <p className="pl-muted">No photos uploaded yet.</p>}</section></>}
+      {view === 'photos' && <><div className="pl-title"><div><span className="pl-kicker">PHOTO LIBRARY</span><h1>Your moments.<br/><em>Your archive.</em></h1><p>Upload photography into private organization storage.</p></div></div><PhotoCarouselBuilder
+      key={org.id}
+      organizationId={org.id}
+      events={events}
+    />
+    <details className="pl-panel">
+      <summary>Upload individual image files</summary>
+      <label className="pl-drop"><ImagePlus size={27}/>{busy ? 'Uploading…' : 'Add JPG, PNG or WEBP'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { void uploadPhoto(e.target.files?.[0]); e.currentTarget.value = '' }}/></label><div className="pl-photo-grid">{photos.map(photo => <div key={photo.id}><img src={photo.signedUrl} alt={photo.filename}/><small>{photo.filename}</small></div>)}</div>{!photos.length && <p className="pl-muted">No photos uploaded yet.</p>}</details></>}
       {view === 'branding' && <BrandForm org={org} save={saveBrand}/>}
     </div></main>
   </div>
