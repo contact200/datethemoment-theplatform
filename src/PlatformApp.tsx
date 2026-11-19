@@ -479,7 +479,7 @@ export default function PlatformApp() {
                 : <UploadCloud size={46}/>}
           </div>
 
-          <span className="pl-pdf-kicker">DATETHEMOMENT / SCHEDULE AUTOMATION</span>
+          
           <h2>
             {pdfFlow.phase === 'uploading' && 'Uploading your PDF'}
             {pdfFlow.phase === 'processing' && 'Building your calendar'}
@@ -496,15 +496,15 @@ export default function PlatformApp() {
             {pdfFlow.phase === 'failed' && 'The schedule processor reported an error. Please check the upload before trying again.'}
           </p>
 
-          <div className="pl-pdf-filename"><FileText size={18}/><span>{pdfFlow.filename}</span></div>
+          
 
           {pdfCompact && ['processing', 'delayed'].includes(pdfFlow.phase) && (
             <div className="pl-pdf-lesson" key={pdfTip}>
-              <div className="pl-pdf-lesson-header">
-                <span>EXPLORE DATETHEMOMENT · {pdfTip + 1}/4</span>
+              <div className="pl-pdf-lesson-header" style={{ justifyContent: "flex-end" }}>
+                
                 <button type="button"
                   onClick={() => setPdfTip(v => (v + 1) % pdfLessons.length)}>
-                  Next tip <ArrowRight size={13}/>
+                  Next <ArrowRight size={13}/>
                 </button>
               </div>
               <strong>{pdfLessons[pdfTip].title}</strong>
@@ -568,7 +568,7 @@ export default function PlatformApp() {
             </div>
           )}
 
-          <div className="pl-pdf-footer">Powered by DateTheMoment</div>
+          
         </div>
       </div>
     )}
