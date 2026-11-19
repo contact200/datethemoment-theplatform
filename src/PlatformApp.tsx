@@ -1,3 +1,4 @@
+import ThemeToggle from './ThemeToggle'
 import ScheduleManager from './ScheduleManager'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -200,7 +201,7 @@ export default function PlatformApp() {
 
       sessionStorage.setItem(`dtm-schedule-id:${org.id}`, record.id)
 
-      notify('PDF uploaded successfully. Ready for Make.com processing.')
+
     } catch (e) {
       fail(e instanceof Error ? e.message : String(e))
     } finally {
@@ -308,7 +309,7 @@ export default function PlatformApp() {
   ]
   return <div className="pl-app">
     <aside className="pl-sidebar"><div className="pl-brand"><div className="pl-logo">D<span>.</span></div><div><strong>DateTheMoment</strong><small>THE PLATFORM</small></div></div><div className="pl-org-pill"><span className="pl-org-avatar" style={{ background: org.color }}>{org.name.slice(0, 1).toUpperCase()}</span><div><small>YOUR ORGANIZATION</small><strong>{org.name}</strong></div><ChevronDown size={16}/></div>{orgs.length > 1 && <select className="pl-org-select" value={org.id} onChange={e => setOrg(orgs.find(o => o.id === e.target.value) || org)}>{orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}<nav>{navigation.map(item => <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}><item.icon size={19}/>{item.label}</button>)}</nav><div className="pl-sidebottom"><div className="pl-sidetip"><ShieldCheck size={17}/> Private club workspace</div><button onClick={() => void client.auth.signOut()}><LogOut size={17}/> Sign out</button></div></aside>
-    <main className="pl-main"><header className="pl-topbar"><span>WORKSPACE / {view.toUpperCase()}</span><div><strong>{org.name}</strong><span className="pl-status-dot"/></div></header><div className="pl-page">
+    <main className="pl-main"><header className="pl-topbar"><ThemeToggle /><span>WORKSPACE / {view.toUpperCase()}</span><div><strong>{org.name}</strong><span className="pl-status-dot"/></div></header><div className="pl-page">
       {error && <div className="pl-error"><strong>Attention:</strong> {error} <button onClick={() => setError('')}>×</button></div>}
       {notice && <div className="pl-success">{notice} <button onClick={() => setNotice('')}>×</button></div>}
       {view === 'overview' && <><div className="pl-hero"><span className="pl-kicker">WELCOME TO YOUR WORKSPACE</span><h1>Make every moment<br/><em>go further.</em></h1><p>Your club's marketing, schedule and visual content—all together.</p><button className="pl-primary" onClick={() => setView('calendar')}>Start with your schedule <ArrowRight size={18}/></button></div><div className="pl-stat-grid"><div><span>Calendar events</span><strong>{planned}</strong></div><div><span>Confirmed events</span><strong>{confirmed}</strong></div><div><span>Caption drafts</span><strong>{drafted}</strong></div><div><span>Photos uploaded</span><strong>{photos.length}</strong></div></div><section className="pl-panel"><div className="pl-panel-heading"><h2>Getting started</h2><span className="pl-tag">YOUR ONBOARDING</span></div><div className="pl-steps"><div><CheckCircle2 color="#b7eb72"/> Account and organization created</div><div><CalendarDays/> {events.length ? 'Schedule available' : 'Upload a PDF schedule or add your first event'}</div><div><Sparkles/> {captions.length ? 'Content draft ready' : 'Create your first caption from an event'}</div><div><ImagePlus/> {photos.length ? 'Photo library ready' : 'Upload your club photography'}</div></div></section><section className="pl-panel"><div className="pl-panel-heading"><h2>Automation setup</h2><button className="pl-link" onClick={() => void refreshWorkspace(org)}><RefreshCw size={15}/> Refresh</button></div><p>Provisioning: <strong>{provision?.status || 'pending'}</strong></p><p className="pl-muted">{provision?.status === 'needs_setup' ? `Make folder ${provision.make_folder_id} created. Administrator must verify new scenario webhooks and connections.` : 'Automatic Make setup uses the private Netlify Function. It never runs on every login.'}</p>{provision?.status === 'pending' && <button className="pl-outline" onClick={() => { const code = window.prompt('Enter your private onboarding code') || ''; if (code) void provisionOrg(org.id, code) }}>Initialize automation</button>}</section></>}

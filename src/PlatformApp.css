@@ -76,3 +76,147 @@
 .pl-brand-form{max-width:500px}.pl-brand-form input[type=color]{width:95px;height:58px;padding:4px}
 @media(max-width:900px){.pl-app{grid-template-columns:1fr}.pl-sidebar{position:static;height:auto;min-height:auto;padding:16px;display:block}.pl-brand{display:none}.pl-org-pill{margin-bottom:8px}.pl-sidebar nav{display:flex;gap:5px;overflow-x:auto;padding:4px}.pl-sidebar nav button{white-space:nowrap;font-size:11px;flex-shrink:0}.pl-sidebottom{display:none}.pl-topbar{height:48px}.pl-stat-grid{grid-template-columns:repeat(2,1fr)}.pl-auth-page{grid-template-columns:1fr;gap:15px}.pl-auth-story .pl-feature{display:none}.pl-auth-card{margin:auto}.pl-review-row{grid-template-columns:1fr 1fr}.pl-event-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.pl-auth-page{padding:20px}.pl-title{display:block}.pl-title>.pl-primary{margin-top:12px}.pl-event{align-items:flex-start;flex-wrap:wrap}.pl-eventbody{flex-basis:calc(100% - 75px)}.pl-event-actions{margin-left:70px}.pl-stat-grid{gap:9px}.pl-stat-grid>div{padding:16px}.pl-event-form{grid-template-columns:1fr}.pl-graphic-preview{padding:23px}}
+
+
+/* DateTheMoment theme switch */
+.pl-theme-toggle {
+  order: 99;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  border: 1px solid #465c5e;
+  border-radius: 999px;
+  background: #203138;
+  color: #e5f0e9;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.pl-theme-toggle:hover { border-color: #c9f072; }
+
+html.dtm-light .pl-app {
+  background: #f5f7f4;
+  color: #192b28;
+}
+html.dtm-light .pl-sidebar {
+  background: #ffffff;
+  border-color: #dce6df;
+}
+html.dtm-light .pl-topbar {
+  background: #ffffff;
+  border-color: #dce6df;
+  color: #526b63;
+}
+html.dtm-light .pl-topbar>div { color: #29443a; }
+html.dtm-light .pl-panel,
+html.dtm-light .pl-stat-grid>div,
+html.dtm-light .pl-auth-card {
+  background: #ffffff;
+  border-color: #dbe6df;
+  color: #192b28;
+}
+html.dtm-light .pl-hero {
+  background: linear-gradient(120deg,#e6f2e1,#f1f8f2);
+  border-color: #c8ddc7;
+}
+html.dtm-light .pl-hero:after { border-color: #a6cda9; }
+html.dtm-light .pl-hero p,
+html.dtm-light .pl-title p,
+html.dtm-light .pl-muted,
+html.dtm-light .pl-stat-grid span,
+html.dtm-light .pl-steps>div,
+html.dtm-light .pl-eventbody small {
+  color: #5c746d;
+}
+html.dtm-light .pl-kicker,
+html.dtm-light .pl-hero h1 em,
+html.dtm-light .pl-title h1 em {
+  color: #477c40;
+}
+html.dtm-light .pl-app label { color: #466059; }
+html.dtm-light .pl-app input,
+html.dtm-light .pl-app select,
+html.dtm-light .pl-app textarea {
+  background: #f9fbf9;
+  border-color: #cadbd0;
+  color: #192b28;
+}
+html.dtm-light .pl-app input:focus,
+html.dtm-light .pl-app select:focus,
+html.dtm-light .pl-app textarea:focus {
+  border-color: #639d55;
+}
+html.dtm-light .pl-org-pill {
+  background: #f1f6f1;
+  border-color: #d8e7da;
+}
+html.dtm-light .pl-org-pill small,
+html.dtm-light .pl-brand small {
+  color: #687f76;
+}
+html.dtm-light .pl-sidebar nav button,
+html.dtm-light .pl-sidebottom button {
+  color: #526960;
+}
+html.dtm-light .pl-sidebar nav button.active,
+html.dtm-light .pl-sidebar nav button:hover {
+  background: #e6f2df;
+  color: #34682e;
+}
+html.dtm-light .pl-outline {
+  background: #ffffff !important;
+  color: #284239 !important;
+  border-color: #b9ccc1 !important;
+}
+html.dtm-light .pl-plain,
+html.dtm-light .pl-link {
+  color: #3b7836 !important;
+}
+html.dtm-light .pl-tag {
+  background: #e6f3dc;
+  color: #387433;
+}
+html.dtm-light .pl-drop {
+  background: #edf7e9;
+  border-color: #8faf88;
+  color: #285e2f !important;
+}
+html.dtm-light .pl-date {
+  background: #e7f1e8;
+  color: #254a35;
+}
+html.dtm-light .pl-date span { color: #55765c; }
+html.dtm-light .pl-event,
+html.dtm-light .pl-caption-card {
+  border-color: #dae6dd;
+}
+html.dtm-light .pl-event-actions button {
+  background: #e6f2e6;
+  color: #356b3b;
+  border-color: #bbd9bf;
+}
+html.dtm-light .pl-empty {
+  border-color: #c7d9ce;
+  color: #60776d;
+}
+html.dtm-light .pl-photo-grid>div,
+html.dtm-light .pl-raw pre {
+  background: #edf3ef;
+  color: #28443b;
+}
+html.dtm-light .pl-raw { color: #536e63; }
+html.dtm-light .pl-theme-toggle {
+  background: #f1f7ee;
+  border-color: #b7d4b3;
+  color: #335f33;
+}
+html.dtm-light .pl-upload-hint { color: #386b45; }
+
+@media(max-width:550px) {
+  .pl-theme-toggle { padding: 7px 10px; font-size: 11px; }
+}
