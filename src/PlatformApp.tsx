@@ -1,4 +1,5 @@
 import ThemeToggle from './ThemeToggle'
+import CaptionStudio from './CaptionStudio'
 import ScheduleManager from './ScheduleManager'
 import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -383,11 +384,43 @@ export default function PlatformApp() {
     else { await refreshWorkspace(org); setView('studio'); notify('Caption draft generated. Review before publishing.') }
   }
 
-  async function saveCaption(caption: Caption, content: string) {
-    if (!org) return
-    const { error: updateError } = await client.from('captions').update({ content, updated_at: new Date().toISOString() }).eq('id', caption.id).eq('organization_id', org.id)
-    if (updateError) fail(updateError.message)
-    else notify('Draft saved.')
+  async function saveCaption(
+    caption: Caption,
+    content: string,
+    status: Caption['status']
+  ): Promise<boolean> {
+    if (!org) return false
+
+    const cleaned = content.trim()
+    if (!cleaned) {
+      fail('Caption cannot be empty.')
+      return false
+    }
+
+    const { data, error: updateError } = await client
+      .from('captions')
+      .update({
+        content: cleaned,
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', caption.id)
+      .eq('organization_id', org.id)
+      .select('id')
+      .maybeSingle()
+
+    if (updateError || !data) {
+      fail(updateError?.message || 'Could not save this caption.')
+      return false
+    }
+
+    setCaptions(current => current.map(item =>
+      item.id === caption.id
+        ? { ...item, content: cleaned, status }
+        : item
+    ))
+    notify(status === 'approved' ? 'Caption approved.' : 'Draft saved.')
+    return true
   }
 
   async function uploadPhoto(file?: File) {
@@ -764,7 +797,21 @@ export default function PlatformApp() {
   </div>
 </details>
 <ScheduleManager client={client} organizationId={org.id} onDeleted={() => refreshWorkspace(org)} /></>}
-      {view === 'studio' && <><div className="pl-title"><div><span className="pl-kicker">CONTENT STUDIO</span><h1>Moments into<br/><em>messages.</em></h1><p>Generate a first draft for each event, then edit in your club's voice.</p></div></div><section className="pl-panel">{!events.length && <div className="pl-empty">Add a calendar event before creating your first caption.</div>}{events.map(e => { const c = captions.find(x => x.event_id === e.id); return <div className="pl-caption-card" key={e.id}><div className="pl-panel-heading"><h3>{e.team} · {dateLabel(e.event_date)}</h3><button className="pl-outline" onClick={() => void generateCaption(e)}><Sparkles size={15}/> {c ? 'Refresh draft' : 'Generate draft'}</button></div>{c ? <><textarea defaultValue={c.content} key={`${c.id}-${c.content}`} rows={8} id={`cap-${c.id}`}/><button className="pl-primary" onClick={() => { const el = document.getElementById(`cap-${c.id}`) as HTMLTextAreaElement | null; if (el) void saveCaption(c, el.value) }}>Save draft</button></> : <p className="pl-muted">No draft yet.</p>}</div> })}</section></>}
+      {view === 'studio' && (
+        <CaptionStudio
+          events={events}
+          captions={captions}
+          onRefresh={() => refreshWorkspace(org)}
+          onGenerate={async eventId => {
+            const event = events.find(item => item.id === eventId)
+            if (event) await generateCaption(event)
+          }}
+          onSave={async (captionId, content, status) => {
+            const caption = captions.find(item => item.id === captionId)
+            return caption ? saveCaption(caption, content, status) : false
+          }}
+        />
+      )}
       {view === 'graphics' && <><div className="pl-title"><div><span className="pl-kicker">BRANDED VISUALS</span><h1>Designed for<br/><em>your club.</em></h1><p>Export 1080 × 1350 matchday or training graphics in PNG or JPEG.</p></div></div><section className="pl-panel"><h2>Generate your graphic</h2>{!events.length ? <p>Add an event in Calendar first.</p> : <><label>Choose calendar event</label><select value={graphicEvent?.id || ''} onChange={e => setGraphicEventId(e.target.value)}>{events.map(e => <option key={e.id} value={e.id}>{e.team} · {dateLabel(e.event_date)} · {e.kind}</option>)}</select><div className="pl-graphic-preview" style={{ borderColor: org.color }}><span style={{ color: org.color }}>{org.name.toUpperCase()}</span><h2>{graphicEvent?.kind === 'training' ? 'TRAINING DAY' : 'MATCHDAY'}</h2><strong>{graphicEvent?.team}</strong>{graphicEvent?.kind === 'match' && <strong>VS {graphicEvent?.opponent || 'TBD'}</strong>}<p>{graphicEvent && dateLabel(graphicEvent.event_date)} · {graphicEvent?.start_time?.slice(0,5) || 'Time TBD'}</p></div><div className="pl-actions"><button className="pl-primary" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind}) }}><Download size={17}/> Download PNG</button><button className="pl-outline" onClick={() => { if (graphicEvent) downloadGraphic({club:org.name,color:org.color,team:graphicEvent.team,opponent:graphicEvent.opponent,date:graphicEvent.event_date,time:graphicEvent.start_time || '',venue:graphicEvent.venue,kind:graphicEvent.kind},'image/jpeg') }}>Download JPEG</button></div></>}</section></>}
       {view === 'photos' && <><div className="pl-title"><div><span className="pl-kicker">PHOTO LIBRARY</span><h1>Your moments.<br/><em>Your archive.</em></h1><p>Upload photography into private organization storage.</p></div></div><section className="pl-panel"><label className="pl-drop"><ImagePlus size={27}/>{busy ? 'Uploading…' : 'Add JPG, PNG or WEBP'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { void uploadPhoto(e.target.files?.[0]); e.currentTarget.value = '' }}/></label><div className="pl-photo-grid">{photos.map(photo => <div key={photo.id}><img src={photo.signedUrl} alt={photo.filename}/><small>{photo.filename}</small></div>)}</div>{!photos.length && <p className="pl-muted">No photos uploaded yet.</p>}</section></>}
       {view === 'branding' && <BrandForm org={org} save={saveBrand}/>}

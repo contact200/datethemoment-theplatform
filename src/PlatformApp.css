@@ -590,3 +590,218 @@ html.dtm-light .pl-pdf-lesson p { color: #52695c }
 html.dtm-light .pl-pdf-lesson-action {
   color: #397346;
 }
+
+
+/* Caption Studio */
+.pl-cs-panel { padding: 20px }
+.pl-cs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pl-cs-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.pl-cs-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+}
+.pl-cs-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px !important;
+}
+.pl-cs-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+.pl-cs-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  border: 1px solid #354b49;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pl-cs-tabs button.active {
+  background: #c9f072;
+  border-color: #c9f072;
+  color: #15261e;
+}
+.pl-cs-tabs button span {
+  font-size: 11px;
+  opacity: .68;
+}
+.pl-cs-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, .85fr) minmax(0, 1.5fr);
+  gap: 16px;
+  min-width: 0;
+}
+.pl-cs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 590px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.pl-cs-event {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 11px;
+  border: 1px solid #344a47;
+  background: rgba(125,155,145,.06);
+  color: inherit;
+  text-align: left;
+}
+.pl-cs-event.active {
+  border-color: #9dca61;
+  background: rgba(201,240,114,.10);
+}
+.pl-cs-event-main {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.pl-cs-event-main strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.pl-cs-event-main span,
+.pl-cs-event small {
+  font-size: 11px;
+  color: #9eb1ad;
+}
+.pl-cs-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  border: 1px solid #52645c;
+  color: #b7c3bd;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.pl-cs-status--approved {
+  color: #9fdf7d;
+  border-color: #638e55;
+}
+.pl-cs-status--draft {
+  color: #e3d394;
+  border-color: #867348;
+}
+.pl-cs-editor {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #344a47;
+  border-radius: 13px;
+}
+.pl-cs-editor-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pl-cs-editor-heading h2 {
+  font-size: 22px;
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+.pl-cs-editor-heading p {
+  font-size: 12px;
+  color: #a1b2ae;
+  margin: 0;
+}
+.pl-cs-textarea {
+  width: 100%;
+  min-height: 230px;
+  line-height: 1.65;
+  resize: vertical;
+}
+.pl-cs-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: #a1b2ae;
+  margin: 8px 0 16px;
+}
+.pl-cs-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pl-cs-buttons button,
+.pl-cs-missing button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+.pl-cs-missing, .pl-cs-empty {
+  padding: 30px 12px;
+  text-align: center;
+  color: #aebeb6;
+}
+.pl-cs-missing h3 { color: inherit }
+.pl-cs-missing p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.pl-cs-copy-error { color: #df9b89; font-size: 12px }
+html.dtm-light .pl-cs-event,
+html.dtm-light .pl-cs-editor,
+html.dtm-light .pl-cs-tabs button:not(.active) {
+  border-color: #d4dfd9;
+}
+html.dtm-light .pl-cs-event {
+  background: #f8fbf9;
+}
+html.dtm-light .pl-cs-event.active {
+  background: #eff8e8;
+  border-color: #83ad69;
+}
+html.dtm-light .pl-cs-event-main span,
+html.dtm-light .pl-cs-event small,
+html.dtm-light .pl-cs-editor-heading p,
+html.dtm-light .pl-cs-details {
+  color: #687b73;
+}
+html.dtm-light .pl-cs-status--approved { color: #368345 }
+html.dtm-light .pl-cs-status--draft { color: #856a23 }
+html.dtm-light .pl-cs-status--missing { color: #687b73 }
+@media (max-width: 760px) {
+  .pl-cs-layout { grid-template-columns: 1fr }
+  .pl-cs-list { max-height: 260px }
+  .pl-cs-editor { padding: 15px }
+  .pl-cs-panel { padding: 14px }
+  .pl-cs-toolbar { flex-wrap: wrap }
+}
