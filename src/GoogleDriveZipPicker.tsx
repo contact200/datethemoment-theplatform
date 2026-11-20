@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Cloud, FileArchive } from 'lucide-react'
+import { Cloud, FileArchive, Save } from 'lucide-react'
+import { supabase } from './lib/supabase'
 
 type GoogleWindow = Window & {
   google?: any
@@ -11,6 +12,20 @@ type DriveZip = {
   name: string
   mimeType: string
   size?: string
+}
+
+type TeamOption = {
+  id: string
+  team_name: string
+}
+
+type ZipImport = {
+  id: string
+  drive_file_name: string
+  team_label: string
+  status: string
+  image_count: number
+  created_at: string
 }
 
 type Props = {
@@ -84,10 +99,59 @@ export default function GoogleDriveZipPicker({
   const [message, setMessage] = useState('')
   const [selected, setSelected] = useState<DriveZip | null>(null)
   const tokenClient = useRef<any>(null)
+  const [teams, setTeams] = useState<TeamOption[]>([])
+  const [imports, setImports] = useState<ZipImport[]>([])
+  const [teamId, setTeamId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [libraryLoading, setLibraryLoading] = useState(true)
 
   useEffect(() => {
     setSelected(null)
     setMessage('')
+    setTeamId('')
+
+    let active = true
+
+    async function loadLibrary() {
+      setLibraryLoading(true)
+
+      const [teamResult, importResult] = await Promise.all([
+        supabase!
+          .from('organization_teams')
+          .select('id,team_name')
+          .eq('organization_id', organizationId)
+          .order('team_name'),
+
+        supabase!
+          .from('photo_zip_imports')
+          .select(
+            'id,drive_file_name,team_label,status,image_count,created_at'
+          )
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+      ])
+
+      if (!active) return
+
+      if (teamResult.error || importResult.error) {
+        setMessage(
+          'Library loading failed: ' +
+          (teamResult.error?.message ||
+           importResult.error?.message)
+        )
+      } else {
+        setTeams((teamResult.data || []) as TeamOption[])
+        setImports((importResult.data || []) as ZipImport[])
+      }
+
+      setLibraryLoading(false)
+    }
+
+    void loadLibrary()
+
+    return () => {
+      active = false
+    }
   }, [organizationId])
 
   useEffect(() => {
@@ -286,6 +350,49 @@ export default function GoogleDriveZipPicker({
     picker.setVisible(true)
   }
 
+  async function saveZipReference() {
+    if (!selected || saving) return
+
+    setSaving(true)
+
+    const team = teams.find(item => item.id === teamId)
+
+    try {
+      const { data, error } = await supabase!
+        .from('photo_zip_imports')
+        .insert({
+          organization_id: organizationId,
+          drive_file_id: selected.id,
+          drive_file_name: selected.name,
+          team_id: team?.id || null,
+          team_label: team?.team_name || '',
+          status: 'queued'
+        })
+        .select(
+          'id,drive_file_name,team_label,status,image_count,created_at'
+        )
+        .single()
+
+      if (error) throw new Error(error.message)
+
+      setImports(current => [data as ZipImport, ...current])
+      setSelected(null)
+      setTeamId('')
+
+      setMessage(
+        'ZIP registered successfully. ' +
+        'Photo extraction will begin once the import processor is connected.'
+      )
+    } catch (error) {
+      setMessage(
+        'Could not save ZIP: ' +
+        (error instanceof Error ? error.message : String(error))
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function connectDrive() {
     if (!tokenClient.current) {
       setMessage('Google Drive is still initializing.')
@@ -343,6 +450,37 @@ export default function GoogleDriveZipPicker({
       )}
 
       {selected && (
+        <div className="pl-drive-zip-register">
+          <label htmlFor="dtm-drive-team">
+            Assign archive to team
+          </label>
+
+          <select
+            id="dtm-drive-team"
+            value={teamId}
+            onChange={event => setTeamId(event.target.value)}
+          >
+            <option value="">Unassigned — choose later</option>
+            {teams.map(team => (
+              <option key={team.id} value={team.id}>
+                {team.team_name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="pl-primary"
+            disabled={saving}
+            onClick={() => void saveZipReference()}
+          >
+            <Save size={17}/>
+            {saving ? 'Saving...' : 'Save ZIP to Club Library'}
+          </button>
+        </div>
+      )}
+
+      {selected && (
         <div className="pl-drive-zip-selected">
           <FileArchive size={24}/>
           <div>
@@ -359,6 +497,35 @@ export default function GoogleDriveZipPicker({
           </div>
         </div>
       )}
+      <div className="pl-drive-library">
+        <h3>Google Drive Photo Archives</h3>
+
+        {libraryLoading && (
+          <p className="pl-muted">Loading archives...</p>
+        )}
+
+        {!libraryLoading && imports.length === 0 && (
+          <p className="pl-muted">
+            No Drive ZIP archives registered yet.
+          </p>
+        )}
+
+        {imports.map(item => (
+          <div className="pl-drive-archive" key={item.id}>
+            <FileArchive size={22}/>
+
+            <div>
+              <strong>{item.drive_file_name}</strong>
+              <small>
+                {item.team_label || 'Team not assigned'}
+              </small>
+              <small>
+                {item.image_count} photos · {item.status}
+              </small>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

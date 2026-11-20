@@ -1084,3 +1084,58 @@ html.dtm-light .pl-photo-carousel-heading small {
   opacity: .7;
   margin-top: 4px;
 }
+
+/* Drive ZIP library registration */
+.pl-drive-zip-register {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 18px;
+}
+.pl-drive-zip-register label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pl-drive-zip-register select {
+  width: 100%;
+  max-width: 380px;
+  padding: 12px;
+  border: 1px solid rgba(141,177,151,.35);
+  border-radius: 9px;
+  color: inherit;
+  background: var(--pl-panel-bg, transparent);
+}
+.pl-drive-zip-register button {
+  align-self: flex-start;
+}
+.pl-drive-library {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(141,177,151,.25);
+}
+.pl-drive-library h3 {
+  margin: 0 0 14px;
+}
+.pl-drive-archive {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(141,177,151,.25);
+  border-radius: 10px;
+  margin-bottom: 9px;
+}
+.pl-drive-archive div {
+  min-width: 0;
+}
+.pl-drive-archive strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.pl-drive-archive small {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: .7;
+}
