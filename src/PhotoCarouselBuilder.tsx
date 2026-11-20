@@ -12,6 +12,7 @@ type PhotoDraft = {
   urls: string[]
   team: string
   eventId: string
+  photosPerCarousel: number
 }
 
 type Props = {
@@ -22,7 +23,8 @@ type Props = {
 const emptyDraft = (): PhotoDraft => ({
   urls: [],
   team: '',
-  eventId: ''
+  eventId: '',
+  photosPerCarousel: 10
 })
 
 function readDraft(organizationId: string): PhotoDraft {
@@ -35,7 +37,10 @@ function readDraft(organizationId: string): PhotoDraft {
         ? data.urls.filter((url: unknown) => typeof url === 'string')
         : [],
       team: typeof data.team === 'string' ? data.team : '',
-      eventId: typeof data.eventId === 'string' ? data.eventId : ''
+      eventId: typeof data.eventId === 'string' ? data.eventId : '',
+      photosPerCarousel: Number.isInteger(data.photosPerCarousel)
+        ? Math.max(1, Math.min(20, data.photosPerCarousel))
+        : 10
     }
   } catch {
     return emptyDraft()
@@ -65,11 +70,11 @@ export default function PhotoCarouselBuilder({
 
   const groups = useMemo(() => {
     const result: string[][] = []
-    for (let i = 0; i < draft.urls.length; i += 10) {
-      result.push(draft.urls.slice(i, i + 10))
+    for (let i = 0; i < draft.urls.length; i += draft.photosPerCarousel) {
+      result.push(draft.urls.slice(i, i + draft.photosPerCarousel))
     }
     return result
-  }, [draft.urls])
+  }, [draft.urls, draft.photosPerCarousel])
 
   const teamOptions = useMemo(() => (
     [...new Set(events.map(event => event.team).filter(Boolean))].sort()
@@ -124,7 +129,7 @@ export default function PhotoCarouselBuilder({
     <section className="pl-panel pl-photo-builder">
       <div className="pl-panel-heading">
         <h2><Images size={21}/> Carousel Builder</h2>
-        <span className="pl-tag">10 PHOTOS PER CAROUSEL</span>
+        <span className="pl-tag">CUSTOM CAROUSELS</span>
       </div>
 
       <p className="pl-muted">
@@ -204,6 +209,24 @@ export default function PhotoCarouselBuilder({
             ))}
           </select>
         </label>
+        <label>
+          Photos per carousel
+          <input
+            type="number"
+            min={1}
+            max={20}
+            step={1}
+            value={draft.photosPerCarousel}
+            onChange={event => {
+              const value = Number(event.target.value)
+              if (!Number.isFinite(value)) return
+              setDraft(current => ({
+                ...current,
+                photosPerCarousel: Math.max(1, Math.min(20, Math.floor(value)))
+              }))
+            }}
+          />
+        </label>
       </div>
 
       {draft.urls.length > 0 && (
@@ -211,7 +234,7 @@ export default function PhotoCarouselBuilder({
           <div className="pl-photo-summary">
             <div><strong>{draft.urls.length}</strong><span>Photos</span></div>
             <div><strong>{groups.length}</strong><span>Carousels</span></div>
-            <div><strong>{Math.min(10, draft.urls.length)}</strong><span>Max per post</span></div>
+            <div><strong>{draft.photosPerCarousel}</strong><span>Photos per group</span></div>
           </div>
 
           {groups.map((urls, groupIndex) => (
@@ -224,7 +247,7 @@ export default function PhotoCarouselBuilder({
                     {draft.eventId ? ' · Linked to game' : ''}
                   </small>
                 </div>
-                <span>{urls.length} / 10 photos</span>
+                <span>{urls.length} / {draft.photosPerCarousel} photos</span>
               </div>
 
               <div className="pl-photo-carousel-grid">
