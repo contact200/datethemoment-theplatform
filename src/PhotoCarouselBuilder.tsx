@@ -1,3 +1,4 @@
+import GoogleDriveZipPicker from './GoogleDriveZipPicker'
 import { useEffect, useMemo, useState } from 'react'
 import { Images, Link2, Save, Trash2 } from 'lucide-react'
 import { supabase } from './lib/supabase'
@@ -229,6 +230,7 @@ export default function PhotoCarouselBuilder({
 
   return (
     <section className="pl-panel pl-photo-builder">
+      <GoogleDriveZipPicker organizationId={organizationId} />
       <div className="pl-panel-heading">
         <h2><Images size={21}/> Carousel Builder</h2>
         <span className="pl-tag">CUSTOM CAROUSELS</span>

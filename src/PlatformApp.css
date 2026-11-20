@@ -1033,3 +1033,54 @@ html.dtm-light .pl-photo-carousel-heading small {
   display: block;
   margin-top: 5px;
 }
+
+/* Google Drive ZIP selector */
+.pl-drive-zip {
+  margin-bottom: 24px;
+  padding: 22px;
+  border: 1px solid rgba(141,177,151,.32);
+  border-radius: 14px;
+  background: rgba(141,177,151,.06);
+}
+.pl-drive-zip-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 18px;
+}
+.pl-drive-zip-heading h3 {
+  margin: 0 0 6px;
+}
+.pl-drive-zip-heading p {
+  margin: 0;
+  font-size: 13px;
+  opacity: .72;
+}
+.pl-drive-zip .pl-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.pl-drive-zip-message {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+.pl-drive-zip-selected {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(141,177,151,.3);
+  border-radius: 10px;
+}
+.pl-drive-zip-selected strong {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-bottom: 5px;
+}
+.pl-drive-zip-selected small {
+  display: block;
+  opacity: .7;
+  margin-top: 4px;
+}
