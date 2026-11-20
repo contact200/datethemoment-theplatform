@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Images, Link2, Trash2 } from 'lucide-react'
+import { Images, Link2, Save, Trash2 } from 'lucide-react'
+import { supabase } from './lib/supabase'
+
+const client = supabase!
 
 type Game = {
   id: string
@@ -13,6 +16,17 @@ type PhotoDraft = {
   team: string
   eventId: string
   photosPerCarousel: number
+}
+
+type SavedCarousel = {
+  id: string
+  import_batch_id: string
+  carousel_order: number
+  team_name: string
+  event_id: string | null
+  photo_urls: string[]
+  status: string
+  created_at: string
 }
 
 type Props = {
@@ -56,6 +70,9 @@ export default function PhotoCarouselBuilder({
     () => readDraft(organizationId)
   )
   const [message, setMessage] = useState('')
+  const [saved, setSaved] = useState<SavedCarousel[]>([])
+  const [loadingSaved, setLoadingSaved] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     try {
@@ -67,6 +84,38 @@ export default function PhotoCarouselBuilder({
       setMessage('Browser storage is unavailable. This preview may not persist.')
     }
   }, [draft, organizationId])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadSaved() {
+      setLoadingSaved(true)
+
+      const { data, error } = await client
+        .from('photo_carousels')
+        .select(
+          'id,import_batch_id,carousel_order,team_name,event_id,photo_urls,status,created_at'
+        )
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+
+      if (!active) return
+
+      if (error) {
+        setMessage(`Could not load saved carousels: ${error.message}`)
+      } else {
+        setSaved((data || []) as SavedCarousel[])
+      }
+
+      setLoadingSaved(false)
+    }
+
+    void loadSaved()
+
+    return () => {
+      active = false
+    }
+  }, [organizationId])
 
   const groups = useMemo(() => {
     const result: string[][] = []
@@ -116,6 +165,59 @@ export default function PhotoCarouselBuilder({
       `${added} new photo${added === 1 ? '' : 's'} imported. ` +
       `${combined.length} total.`
     )
+  }
+
+  async function saveCarousels() {
+    if (!draft.urls.length || saving) return
+
+    setSaving(true)
+    setMessage('')
+
+    const batchId = crypto.randomUUID()
+
+    const rows = groups.map((urls, index) => ({
+      organization_id: organizationId,
+      import_batch_id: batchId,
+      carousel_order: index + 1,
+      team_name: draft.team.trim(),
+      event_id: draft.eventId || null,
+      photo_urls: urls,
+      status: 'draft'
+    }))
+
+    try {
+      const { data, error } = await client
+        .from('photo_carousels')
+        .insert(rows)
+        .select(
+          'id,import_batch_id,carousel_order,team_name,event_id,photo_urls,status,created_at'
+        )
+
+      if (error) throw new Error(error.message)
+
+      if (!data || data.length !== rows.length) {
+        throw new Error('Could not verify all saved carousels.')
+      }
+
+      const inserted = (data as SavedCarousel[])
+        .sort((a, b) => a.carousel_order - b.carousel_order)
+
+      setSaved(current => [...inserted, ...current])
+      setDraft(emptyDraft())
+
+      setMessage(
+        `${inserted.length} carousel${inserted.length === 1 ? '' : 's'} ` +
+        'saved to Supabase successfully.'
+      )
+    } catch (error) {
+      setMessage(
+        'Save failed: ' +
+        (error instanceof Error ? error.message : String(error)) +
+        '. Your unsaved photos are still available.'
+      )
+    } finally {
+      setSaving(false)
+    }
   }
 
   function clearPreview() {
@@ -230,6 +332,23 @@ export default function PhotoCarouselBuilder({
       </div>
 
       {draft.urls.length > 0 && (
+        <div className="pl-photo-save-bar">
+          <button
+            type="button"
+            className="pl-primary"
+            disabled={saving}
+            onClick={() => void saveCarousels()}
+          >
+            <Save size={17}/>
+            {saving
+              ? 'Saving...'
+              : `Save ${groups.length} Carousel${groups.length === 1 ? '' : 's'}`}
+          </button>
+          <span>Save to your organization's photo library.</span>
+        </div>
+      )}
+
+      {draft.urls.length > 0 && (
         <>
           <div className="pl-photo-summary">
             <div><strong>{draft.urls.length}</strong><span>Photos</span></div>
@@ -273,16 +392,59 @@ export default function PhotoCarouselBuilder({
           ))}
 
           <p className="pl-muted pl-photo-disclaimer">
-            Prototype: this preview is saved in this browser only.
-            Nothing has been published or sent to Supabase yet.
+            Preview only until saved. No posts are published automatically.
           </p>
         </>
       )}
 
-      {!draft.urls.length && (
+      {loadingSaved && (
+        <p className="pl-muted">Loading saved carousels...</p>
+      )}
+
+      {saved.length > 0 && (
+        <div className="pl-photo-saved">
+          <div className="pl-photo-saved-heading">
+            <h3>Saved Carousels</h3>
+            <span>{saved.length} saved</span>
+          </div>
+
+          <div className="pl-photo-saved-grid">
+            {saved.map(item => (
+              <div className="pl-photo-saved-card" key={item.id}>
+                <div className="pl-photo-saved-images">
+                  {item.photo_urls.slice(0, 4).map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      loading="lazy"
+                      alt={`Saved photo ${index + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="pl-photo-saved-info">
+                  <strong>Carousel {item.carousel_order}</strong>
+                  <span>{item.photo_urls.length} photos</span>
+                </div>
+
+                <small>
+                  {item.team_name || 'Unassigned team'}
+                  {item.event_id ? ' · Linked game' : ''}
+                </small>
+
+                <small>
+                  Saved {new Date(item.created_at).toLocaleDateString()}
+                </small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!draft.urls.length && !saved.length && !loadingSaved && (
         <div className="pl-photo-empty">
           <Images size={29}/>
-          <p>Your photo carousels will appear here.</p>
+          <p>Paste your photo links above to create a carousel.</p>
         </div>
       )}
     </section>
